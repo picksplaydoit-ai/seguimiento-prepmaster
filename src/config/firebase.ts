@@ -1,16 +1,15 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import localConfig from '../../firebase-applet-config.json';
 
 // Definición de variables de entorno para Vercel o configuración local para el entorno de desarrollo
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || localConfig.apiKey || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || localConfig.authDomain || "",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || localConfig.projectId || "",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || localConfig.storageBucket || "",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || localConfig.messagingSenderId || "",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || localConfig.appId || "",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
 };
 
 // Inicialización de la aplicación de Firebase

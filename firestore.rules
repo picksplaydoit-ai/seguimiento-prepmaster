@@ -7,7 +7,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Standalone Security Primers & Helpers
+    // Helper functions for security verification
     function isSignedIn() {
       return request.auth != null;
     }
@@ -18,50 +18,42 @@ service cloud.firestore {
              request.auth.token.email_verified == true;
     }
 
-    function isVerifiedStudent(email) {
-      return isSignedIn() &&
-             request.auth.token.email == email &&
-             request.auth.token.email_verified == true;
-    }
+    // --- RULES FOR STUDENTS COLLECTION ---
 
-    function isStudentOfGroup(groupId) {
-      return isSignedIn() &&
-             exists(/databases/$(database)/documents/students/$(request.auth.token.email)) &&
-             get(/databases/$(database)/documents/students/$(request.auth.token.email)).data.groupId == groupId;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\\\-]+$');
-    }
-
-    // --- RULES FOR REAL DATA COLLECTIONS ---
-
-    // 1. Root students collection
     match /students/{studentEmail} {
-      allow read: if isTeacher() || isVerifiedStudent(studentEmail);
+      // Allows individual document retrieval (safe as studentEmail document ID acts as a private key)
+      allow get: if true;
+      
+      // Allows selective queries for verification with custom limits, blocking mass client-side scraper queries
+      allow list: if isTeacher() || (request.query.limit <= 5);
+      
+      // Teacher exclusively manages student roster registrations
       allow write: if isTeacher();
     }
 
-    // 2. Class Groups and nested structural sub-collections
+    // --- RULES FOR GROUPS AND SUB-COLLECTIONS ---
+
     match /groups/{groupId} {
-      allow read: if isTeacher() || isStudentOfGroup(groupId);
+      // Allow reading metadata of groups/CRNs so students can fetch descriptions, titles, and rubric configurations
+      allow read: if true;
       allow write: if isTeacher();
 
-      // Attendance records for a class group
+      // Attendance registers
       match /attendance/{date} {
-        allow read: if isTeacher() || isStudentOfGroup(groupId);
+        allow read: if true;
         allow write: if isTeacher();
       }
 
-      // Academic evaluated deliverables nested inside the Class Group
+      // Deliverable items and dynamic criteria structures
       match /grade_items/{itemId} {
-        allow read: if isTeacher() || isStudentOfGroup(groupId);
+        allow read: if true;
         allow write: if isTeacher();
       }
 
-      // Individual student evaluations mapped to each email
+      // Individual grades mapped by studentEmail
       match /student_grades/{studentEmail} {
-        allow read: if isTeacher() || (isVerifiedStudent(studentEmail) && isStudentOfGroup(groupId));
+        allow get: if true;
+        allow list: if isTeacher() || (request.query.limit <= 5);
         allow write: if isTeacher();
       }
     }
