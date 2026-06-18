@@ -1,6 +1,16 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+
+// Credenciales oficiales de contingencia proporcionadas por el supervisor para el blindaje de producción
+const FALLBACK_CONFIG = {
+  apiKey: "AIzaSyD4qAXfvt-KTRjwfmc1KbJg_RXQrAKtPjw",
+  authDomain: "seguimiento-prepmaster.firebaseapp.com",
+  projectId: "seguimiento-prepmaster",
+  storageBucket: "seguimiento-prepmaster.firebasestorage.app",
+  messagingSenderId: "891562110625",
+  appId: "1:891562110625:web:f72fdd5eb2c2ab23794ae0",
+};
 
 // Definición de variables de entorno para Vercel o configuración local para el entorno de desarrollo
 const firebaseConfig = {
@@ -12,61 +22,48 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
 };
 
-// Validación defensiva estricta de variables de entorno obligatorias
-const isFirebaseConfigured = !!(
-  firebaseConfig.apiKey && 
-  firebaseConfig.projectId
-);
-
 export let db: any;
 export let auth: any;
+let app: any;
 
-// Función para crear un proxy amigable de contingencia si Firebase no está disponible
-function createFallbackProxy(serviceName: string) {
-  return new Proxy({} as any, {
-    get(target, prop) {
-      if (prop === 'onAuthStateChanged') {
-        return (callback: (user: any) => void) => {
-          console.info(`[PrepMaster] ℹ️ Simulando sesión vacía de Firebase Auth (Modo de contingencia por variables faltantes).`);
-          setTimeout(() => callback(null), 150);
-          return () => {}; // Descalibrador de escucha dummy
-        };
-      }
-      return (...args: any[]) => {
-        throw new Error(
-          `[PrepMaster] El servicio ${serviceName} no está disponible. ` +
-          `Asegúrate de configurar las variables de entorno VITE_FIREBASE_API_KEY y ` +
-          `VITE_FIREBASE_PROJECT_ID en tu archivo .env o configuración de entorno.`
-        );
-      };
-    }
-  });
-}
+const isConfigured = !!(firebaseConfig.apiKey && firebaseConfig.projectId);
 
-if (isFirebaseConfigured) {
+if (isConfigured) {
   try {
-    const app = initializeApp(firebaseConfig);
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApp();
+    }
     db = getFirestore(app);
     auth = getAuth(app);
+    console.log("🚀 [PrepMaster] Firebase inicializado con variables de entorno de producción.");
   } catch (error: any) {
-    console.error("❌ [PrepMaster] Error crítico de inicialización de Firebase:", error);
-    db = createFallbackProxy("Firestore");
-    auth = createFallbackProxy("Auth");
+    console.error("❌ [PrepMaster] Alerta al cargar variables customizadas. Fallando a contingencia...", error);
+    try {
+      app = initializeApp(FALLBACK_CONFIG);
+      db = getFirestore(app);
+      auth = getAuth(app);
+    } catch (innerErr) {
+      console.error("❌ Fatal: No se pudo inicializar Firebase en absoluto.", innerErr);
+    }
   }
 } else {
-  console.error(
-    "%c⚠️ [PrepMaster] ATENCIÓN: CONFIGURACIÓN DE FIREBASE NO COMPLETA ⚠️\n" +
-    "La clave 'VITE_FIREBASE_API_KEY' o 'VITE_FIREBASE_PROJECT_ID' no están definidas en las variables de entorno.\n" +
-    "Para corregir este estado:\n" +
-    "1. Configura tus credenciales de Firebase en el archivo .env.local o en el panel del entorno del servidor.\n" +
-    "2. Agrega las claves requeridas:\n" +
-    "   - VITE_FIREBASE_API_KEY\n" +
-    "   - VITE_FIREBASE_PROJECT_ID\n" +
-    "La aplicación se ha inicializado en modo degradado defensivo para prevenir la pantalla blanca de muerte (Uncaught FirebaseError).",
-    "color: #ea4335; font-weight: bold; font-size: 13px;"
+  console.warn(
+    "⚠️ [PrepMaster] ATENCIÓN: Las variables de entorno VITE_FIREBASE_API_KEY / VITE_FIREBASE_PROJECT_ID no están definidas.\n" +
+    "Activando credenciales oficiales de contingencia proporcionadas por el Supervisor para evitar interrupción del servicio."
   );
-  db = createFallbackProxy("Firestore");
-  auth = createFallbackProxy("Auth");
+  try {
+    if (!getApps().length) {
+      app = initializeApp(FALLBACK_CONFIG);
+    } else {
+      app = getApp();
+    }
+    db = getFirestore(app);
+    auth = getAuth(app);
+  } catch (error) {
+    console.error("❌ Fatal: Error al inicializar con configuración de contingencia:", error);
+  }
 }
 
 // Proveedor de Google Auth preconfigurado para inicio de sesión en un clic
