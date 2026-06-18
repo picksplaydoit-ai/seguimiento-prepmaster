@@ -12,14 +12,62 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
 };
 
-// Inicialización de la aplicación de Firebase
-const app = initializeApp(firebaseConfig);
+// Validación defensiva estricta de variables de entorno obligatorias
+const isFirebaseConfigured = !!(
+  firebaseConfig.apiKey && 
+  firebaseConfig.projectId
+);
 
-// Base de datos de Firestore. Nota: Usa el Database ID si está especificado en el entorno de desarrollo.
-export const db = getFirestore(app);
+export let db: any;
+export let auth: any;
 
-// Autenticación de Firebase
-export const auth = getAuth(app);
+// Función para crear un proxy amigable de contingencia si Firebase no está disponible
+function createFallbackProxy(serviceName: string) {
+  return new Proxy({} as any, {
+    get(target, prop) {
+      if (prop === 'onAuthStateChanged') {
+        return (callback: (user: any) => void) => {
+          console.info(`[PrepMaster] ℹ️ Simulando sesión vacía de Firebase Auth (Modo de contingencia por variables faltantes).`);
+          setTimeout(() => callback(null), 150);
+          return () => {}; // Descalibrador de escucha dummy
+        };
+      }
+      return (...args: any[]) => {
+        throw new Error(
+          `[PrepMaster] El servicio ${serviceName} no está disponible. ` +
+          `Asegúrate de configurar las variables de entorno VITE_FIREBASE_API_KEY y ` +
+          `VITE_FIREBASE_PROJECT_ID en tu archivo .env o configuración de entorno.`
+        );
+      };
+    }
+  });
+}
+
+if (isFirebaseConfigured) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+  } catch (error: any) {
+    console.error("❌ [PrepMaster] Error crítico de inicialización de Firebase:", error);
+    db = createFallbackProxy("Firestore");
+    auth = createFallbackProxy("Auth");
+  }
+} else {
+  console.error(
+    "%c⚠️ [PrepMaster] ATENCIÓN: CONFIGURACIÓN DE FIREBASE NO COMPLETA ⚠️\n" +
+    "La clave 'VITE_FIREBASE_API_KEY' o 'VITE_FIREBASE_PROJECT_ID' no están definidas en las variables de entorno.\n" +
+    "Para corregir este estado:\n" +
+    "1. Configura tus credenciales de Firebase en el archivo .env.local o en el panel del entorno del servidor.\n" +
+    "2. Agrega las claves requeridas:\n" +
+    "   - VITE_FIREBASE_API_KEY\n" +
+    "   - VITE_FIREBASE_PROJECT_ID\n" +
+    "La aplicación se ha inicializado en modo degradado defensivo para prevenir la pantalla blanca de muerte (Uncaught FirebaseError).",
+    "color: #ea4335; font-weight: bold; font-size: 13px;"
+  );
+  db = createFallbackProxy("Firestore");
+  auth = createFallbackProxy("Auth");
+}
 
 // Proveedor de Google Auth preconfigurado para inicio de sesión en un clic
 export const googleProvider = new GoogleAuthProvider();
@@ -67,7 +115,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
       emailVerified: auth.currentUser?.emailVerified || null,
       isAnonymous: auth.currentUser?.isAnonymous || null,
       tenantId: auth.currentUser?.tenantId || null,
-      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+      providerInfo: auth.currentUser?.providerData?.map((provider: any) => ({
         providerId: provider.providerId,
         email: provider.email,
       })) || [],
@@ -93,3 +141,4 @@ export async function loginWithGoogle() {
     throw error;
   }
 }
+
