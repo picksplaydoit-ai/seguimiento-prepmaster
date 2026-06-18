@@ -1,0 +1,6 @@
+{
+  "name": "Seguimiento PrepMaster",
+  "description": "Plataforma escolar para gestionar asistencia, calificaciones y rúbricas dinámicas con un sistema de transparencia para alumnos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

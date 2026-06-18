@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "group": {
+      "title": "Group",
+      "description": "Un grupo de alumnos creado de forma dinámica por un profesor.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID único o CRN de la asignatura." },
+        "name": { "type": "string", "description": "Nombre de la asignatura o grupo." },
+        "teacherUid": { "type": "string", "description": "UID de Firebase Auth del profesor que posee el grupo." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Fecha de creación del grupo." },
+        "rubric": { "type": "object", "description": "Mapa de criterios de evaluación (ej: tareas: { name: 'Tareas', percentage: 40 }). Sumatoria debe dar exactamente 100%." }
+      },
+      "required": ["id", "name", "teacherUid", "createdAt", "rubric"]
+    },
+    "student": {
+      "title": "Student",
+      "description": "La ficha de inscripción del alumno vinculada a un grupo específico.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Correo institucional del alumno (ID del documento)." },
+        "name": { "type": "string", "description": "Nombre completo del alumno." },
+        "notes": { "type": "string", "description": "Código o matrícula única del alumno." },
+        "groupId": { "type": "string", "description": "ID del grupo al que pertenece (CRN)." },
+        "status": { "type": "string", "description": "Estado en tiempo real: Aprobado, Reprobado o Sin derecho por faltas." },
+        "finalGrade": { "type": "number", "description": "Calificación final ponderada acumulada." },
+        "attendancePercentage": { "type": "number", "description": "Porcentaje de asistencia acumulada de este alumno." }
+      },
+      "required": ["email", "name", "notes", "groupId"]
+    },
+    "attendance": {
+      "title": "Attendance",
+      "description": "Registro diario de asistencia de un grupo completo.",
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string", "description": "ID del grupo." },
+        "date": { "type": "string", "description": "Fecha en formato YYYY-MM-DD." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Momento de creación." },
+        "records": { "type": "object", "description": "Mapa que asocia el correo del alumno con su asistencia: 1.0 (Asistencia), 0.5 (Retardo), 0.0 (Falta)." }
+      },
+      "required": ["groupId", "date", "createdAt", "records"]
+    },
+    "grade_item": {
+      "title": "GradeItem",
+      "description": "Una asignación, examen o proyecto evaluable creado bajo una categoría de la rúbrica.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID único de la asignación." },
+        "name": { "type": "string", "description": "Nombre de la asignación." },
+        "criterionId": { "type": "string", "description": "ID de criterio al que pertenece de la rúbrica (ej. tareas)." },
+        "maxPoints": { "type": "number", "description": "Máxima puntuación." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "criterionId", "maxPoints", "createdAt"]
+    },
+    "student_grades": {
+      "title": "StudentGrades",
+      "description": "Documento consolidador de notas para un estudiante en un grupo específico.",
+      "type": "object",
+      "properties": {
+        "studentEmail": { "type": "string", "description": "Correo del alumno." },
+        "groupId": { "type": "string", "description": "ID del grupo." },
+        "scores": { "type": "object", "description": "Mapa de ID de asignación (gradeItemId) a calificación (0-100)." },
+        "criterionAverages": { "type": "object", "description": "Mapa de ID de criterio a promedio parcial del criterio." },
+        "finalGrade": { "type": "number", "description": "Calificación ponderada final basada en rúbrica." },
+        "status": { "type": "string", "description": "Estatus del alumno en el grupo." }
+      },
+      "required": ["studentEmail", "groupId", "scores", "criterionAverages", "finalGrade", "status"]
+    }
+  },
+  "firestore": {
+    "/groups/{groupId}": {
+      "schema": "group",
+      "description": "Colección de grupos de clases administrados por los profesores."
+    },
+    "/groups/{groupId}/attendance/{date}": {
+      "schema": "attendance",
+      "description": "Subcolección de asistencia por fecha dentro de cada grupo de clase."
+    },
+    "/groups/{groupId}/grade_items/{itemId}": {
+      "schema": "grade_item",
+      "description": "Subcolección de rubros o tareas creadas bajo los criterios."
+    },
+    "/groups/{groupId}/student_grades/{studentEmail}": {
+      "schema": "student_grades",
+      "description": "Mapeo consolidado de calificaciones individuales por estudiante."
+    },
+    "/students/{studentEmail}": {
+      "schema": "student",
+      "description": "Colección raíz de alumnos para consulta rápida de perfil y autenticación por correo electrónico."
+    }
+  }
+}

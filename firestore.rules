@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Strict Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Standalone Security Primers & Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isTeacher() {
+      return isSignedIn() &&
+             request.auth.token.email.toLowerCase() == "vacrack953@gmail.com" &&
+             request.auth.token.email_verified == true;
+    }
+
+    function isVerifiedStudent(email) {
+      return isSignedIn() &&
+             request.auth.token.email == email &&
+             request.auth.token.email_verified == true;
+    }
+
+    function isStudentOfGroup(groupId) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/students/$(request.auth.token.email)) &&
+             get(/databases/$(database)/documents/students/$(request.auth.token.email)).data.groupId == groupId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\\\-]+$');
+    }
+
+    // --- RULES FOR REAL DATA COLLECTIONS ---
+
+    // 1. Root students collection
+    match /students/{studentEmail} {
+      allow read: if isTeacher() || isVerifiedStudent(studentEmail);
+      allow write: if isTeacher();
+    }
+
+    // 2. Class Groups and nested structural sub-collections
+    match /groups/{groupId} {
+      allow read: if isTeacher() || isStudentOfGroup(groupId);
+      allow write: if isTeacher();
+
+      // Attendance records for a class group
+      match /attendance/{date} {
+        allow read: if isTeacher() || isStudentOfGroup(groupId);
+        allow write: if isTeacher();
+      }
+
+      // Academic evaluated deliverables nested inside the Class Group
+      match /grade_items/{itemId} {
+        allow read: if isTeacher() || isStudentOfGroup(groupId);
+        allow write: if isTeacher();
+      }
+
+      // Individual student evaluations mapped to each email
+      match /student_grades/{studentEmail} {
+        allow read: if isTeacher() || (isVerifiedStudent(studentEmail) && isStudentOfGroup(groupId));
+        allow write: if isTeacher();
+      }
+    }
+
+  }
+}
