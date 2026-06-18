@@ -29,7 +29,7 @@ import StudentDashboard from './components/StudentDashboard';
 import { Student, UserRole } from './types';
 
 // El supervisor o profesor administrador preestablecido
-const ADMIN_EMAIL = 'vacrack953@gmail.com';
+const ADMIN_EMAIL = 'ricardo.vaca@academicos.udg.mx';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);

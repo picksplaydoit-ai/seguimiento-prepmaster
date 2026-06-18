@@ -14,7 +14,7 @@ service cloud.firestore {
 
     function isTeacher() {
       return isSignedIn() &&
-             request.auth.token.email.toLowerCase() == "vacrack953@gmail.com" &&
+             request.auth.token.email.toLowerCase() == "ricardo.vaca@academicos.udg.mx" &&
              request.auth.token.email_verified == true;
     }
 
